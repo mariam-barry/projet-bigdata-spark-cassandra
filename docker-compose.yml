@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  cassandra:
+    image: cassandra:4.1
+    container_name: cassandra
+    ports:
+      - "9042:9042"       # port CQL (utilisé par Spark pour se connecter)
+    environment:
+      - CASSANDRA_CLUSTER_NAME=BigDataCluster
+      - CASSANDRA_DC=dc1
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - MAX_HEAP_SIZE=512M
+      - HEAP_NEWSIZE=100M
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'describe cluster'"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  spark:
+    image: jupyter/pyspark-notebook:latest
+    container_name: spark
+    ports:
+      - "8888:8888"       # interface Jupyter Notebook
+      - "4040:4040"       # interface web Spark (suivi des jobs)
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ./data:/home/jovyan/data
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    depends_on:
+      - cassandra
+    command: >
+      start-notebook.sh
+      --NotebookApp.token=''
+      --NotebookApp.password=''
+
+volumes:
+  cassandra_data:
